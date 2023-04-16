@@ -1,6 +1,9 @@
 package session
 
-import "sorm/clause"
+import (
+	"reflect"
+	"sorm/clause"
+)
 
 // Insert one or more records in database
 func (s *Session) Insert(values ...interface{}) (int64, error) {
@@ -17,4 +20,34 @@ func (s *Session) Insert(values ...interface{}) (int64, error) {
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+// Find s := sorm.NewEngine("sqlite3", "sorm.db").NewSession()
+// var users []User
+// s.Find(&users);
+func (s *Session) Find(values interface{}) error {
+	destSlice := reflect.Indirect(reflect.ValueOf(values))
+	// 获取切片的单个元素类型destType
+	destType := destSlice.Type().Elem()
+	table := s.Model(reflect.New(destType).Elem().Interface()).RefTable()
+
+	s.clause.Set(clause.SELECT, table.Name, table.FieldNames)
+	sql, vars := s.clause.Build(clause.SELECT, clause.WHERE, clause.ORDERBY, clause.LIMIT)
+	rows, err := s.Raw(sql, vars...).QueryRows()
+	if err != nil {
+		return err
+	}
+
+	for rows.Next() {
+		dest := reflect.New(destType).Elem()
+		var values []interface{}
+		for _, name := range table.FieldNames {
+			values = append(values, dest.FieldByName(name).Addr().Interface())
+		}
+		if err := rows.Scan(values...); err != nil {
+			return err
+		}
+		destSlice.Set(reflect.Append(destSlice, dest))
+	}
+	return rows.Close()
 }
