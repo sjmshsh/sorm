@@ -2,7 +2,9 @@ package session
 
 import (
 	"database/sql"
+	"sorm/dialect"
 	"sorm/log"
+	"sorm/schema"
 	"strings"
 )
 
@@ -10,13 +12,18 @@ import (
 // 第二是情况sql和sqlVars两个变量，这样Session可以复用，开启一次会话可以执行多个sql
 // 每一次查询都对应着一个Session
 type Session struct {
-	db      *sql.DB         // 使用sql.Open()方法连接数据库成功之后返回的指针
-	sql     strings.Builder // 拼接SQL语句
-	sqlVars []interface{}   // sql语句中的参数
+	db       *sql.DB         // 使用sql.Open()方法连接数据库成功之后返回的指针
+	sql      strings.Builder // 拼接SQL语句
+	sqlVars  []interface{}   // sql语句中的参数
+	refTable *schema.Schema
+	dialect  dialect.Dialect
 }
 
-func New(db *sql.DB) *Session {
-	return &Session{db: db}
+func New(db *sql.DB, dialect dialect.Dialect) *Session {
+	return &Session{
+		dialect: dialect,
+		db:      db,
+	}
 }
 
 func (s *Session) Clear() {

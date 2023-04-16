@@ -2,6 +2,7 @@ package sorm
 
 import (
 	"database/sql"
+	"sorm/dialect"
 	"sorm/log"
 	"sorm/session"
 )
@@ -11,7 +12,8 @@ import (
 // Engine是Sorm与用户交互的入口
 
 type Engine struct {
-	db *sql.DB
+	db      *sql.DB
+	dialect dialect.Dialect
 }
 
 func NewEngine(driver, source string) (e *Engine, err error) {
@@ -24,7 +26,14 @@ func NewEngine(driver, source string) (e *Engine, err error) {
 		log.Error(err)
 		return
 	}
-	e = &Engine{db: db}
+	dial, ok := dialect.GetDialect(driver)
+	if !ok {
+		log.Errorf("dialect %s Not Found", driver)
+	}
+	e = &Engine{
+		db:      db,
+		dialect: dial,
+	}
 	log.Info("Connect database success")
 	return
 }
@@ -38,5 +47,5 @@ func (engine *Engine) Close() {
 
 // NewSession 通过 Engine 实例创建会话，进而与数据库进行交互了
 func (engine *Engine) NewSession() *session.Session {
-	return session.New(engine.db)
+	return session.New(engine.db, engine.dialect)
 }
