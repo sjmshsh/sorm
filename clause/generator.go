@@ -76,3 +76,25 @@ func _where(values ...interface{}) (string, []interface{}) {
 func _orderBy(values ...interface{}) (string, []interface{}) {
 	return fmt.Sprintf("ORDER BY %s", values[0]), []interface{}{}
 }
+
+// 只有一个入参，是表名，并且复用了_select生成器
+func _count(values ...interface{}) (string, []interface{}) {
+	return _select(values[0], []string{"count(*)"})
+}
+
+func _delete(values ...interface{}) (string, []interface{}) {
+	return fmt.Sprintf("DELETE FROM %s", values[0]), []interface{}{}
+}
+
+// _update 设计入参是2个，第一个参数是表名(table)，第二个参数是 map 类型，表示待更新的键值对。
+func _update(values ...interface{}) (string, []interface{}) {
+	tableName := values[0]
+	m := values[1].(map[string]interface{})
+	var keys []string
+	var vars []interface{}
+	for k, v := range m {
+		keys = append(keys, k+" = ?")
+		vars = append(vars, v)
+	}
+	return fmt.Sprintf("UPDATE %s SET %s", tableName, strings.Join(keys, ", ")), vars
+}
